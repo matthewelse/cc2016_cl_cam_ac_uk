@@ -1,8 +1,8 @@
 open Lexing
 open Common
 
-let error file action s =
-  Errors.complain ("\nERROR in " ^ file ^ " with " ^ action ^ " : " ^ s ^ "\n")
+let error action s =
+  Errors.complain ("\nERROR in input with " ^ action ^ " : " ^ s ^ "\n")
 
 let peek (options: Options.t) m e pp =
   if options.verbose_front then
@@ -13,37 +13,37 @@ let peek (options: Options.t) m e pp =
       ^ "\n" )
   else ()
 
-let parse_error file lexbuf =
+let parse_error lexbuf =
   let pos = lexbuf.lex_curr_p in
   let line = string_of_int pos.pos_lnum in
   let pos = string_of_int (pos.pos_cnum - pos.pos_bol + 1) in
-  error file "parsing" ("at line " ^ line ^ " position " ^ pos)
+  error "parsing" ("at line " ^ line ^ " position " ^ pos)
 
 (* initialize lexer *)
 let init_lexbuf file =
   let in_chan =
     try open_in file with _ ->
-      error file "initialize lexer" ("can't open file " ^ file)
+      error "initialize lexer" ("can't open file " ^ file)
   in
   let lexbuf = from_channel in_chan in
   let _ =
     lexbuf.lex_curr_p <- {pos_fname= file; pos_lnum= 1; pos_bol= 0; pos_cnum= 0}
   in
-  (file, lexbuf)
+  lexbuf
 
-(* parse input file *)
-let parse options (file, lexbuf) =
+(* parse input string *)
+let parse options lexbuf =
   let e =
     try Parser.start Lexer.token lexbuf with Parsing.Parse_error ->
-      parse_error file lexbuf
+      parse_error lexbuf
   in
   let _ = peek options "Parsed result" e Past.string_of_expr in
-  (file, e)
+  e
 
 (* perform static checks *)
-let check options (file, e) =
+let check options e =
   let e' =
-    try Static.check e with Errors.Error s -> error file "static check" s
+    try Static.check e with Errors.Error s -> error "static check" s
   in
   let _ = peek options "After static checks" e' Past.string_of_expr in
   e'
@@ -57,3 +57,10 @@ let translate (options: Options.t) e =
 (* the front end *)
 let front_end options file =
   translate options (check options (parse options (init_lexbuf file)))
+
+let front_end_with_string options input =
+  let lexbuf = from_string input in
+  let expr = parse options lexbuf in
+  let expr' = check options expr in
+  translate options expr'
+
