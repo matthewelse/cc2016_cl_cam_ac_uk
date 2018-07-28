@@ -146,7 +146,7 @@ let rec string_of_value = function
   | INT n -> string_of_int n
   | UNIT -> "UNIT"
   | PAIR (v1, v2) ->
-      "PAIR(" ^ string_of_value v1 ^ ", " ^ string_of_value v2 ^ ")"
+      "(" ^ string_of_value v1 ^ ", " ^ string_of_value v2 ^ ")"
   | INL v -> "INL(" ^ string_of_value v ^ ")"
   | INR v -> "INR(" ^ string_of_value v ^ ")"
   | CLOSURE cl -> "CLOSURE(" ^ string_of_closure cl ^ ")"
