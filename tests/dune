@@ -1,0 +1,7 @@
+
+(library
+    (name testing)
+    (libraries core async common backend)
+    (inline_tests)
+  (preprocess (pps ppx_inline_test ppx_expect))
+)
