@@ -82,12 +82,12 @@ let rec filter_env fvars = function
       else filter_env fvars rest
 
 let mk_fun (x, body, env) =
-  let fvars = Free_vars.free_vars ([x], body) in
+  let fvars = Free_vars.free_vars [x] body in
   let smaller_env = filter_env fvars env in
   CLOSURE (x, body, smaller_env)
 
 let mk_rec_fun (f, x, body, env) =
-  let fvars = Free_vars.free_vars ([f; x], body) in
+  let fvars = Free_vars.free_vars [f; x] body in
   let smaller_env = filter_env fvars env in
   let f_binding = (f, REC_CLOSURE (x, body, [])) in
   CLOSURE (x, body, f_binding :: smaller_env)

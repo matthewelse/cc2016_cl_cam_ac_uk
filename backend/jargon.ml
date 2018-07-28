@@ -1,6 +1,5 @@
-open Frontend
-open Common
 open Frontend.Ast
+open Common
 
 type code_index = int
 
@@ -742,7 +741,7 @@ and comp_lambda vmap (f_opt, x, e) =
     match f_opt with None -> [] | Some f -> [(f, STACK_LOCATION (-1))]
   in
   let x_bind = (x, STACK_LOCATION (-2)) in
-  let fvars = Free_vars.free_vars (bound_vars, e) in
+  let fvars = Free_vars.free_vars bound_vars e in
   let fetch_fvars = List.map (fun y -> LOOKUP (find vmap y)) fvars in
   let fvar_bind (y, p) = (y, HEAP_LOCATION p) in
   let env_bind = List.map fvar_bind (positions fvars) in

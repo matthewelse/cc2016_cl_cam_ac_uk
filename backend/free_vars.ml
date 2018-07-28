@@ -1,16 +1,17 @@
-open Ast
+open Core
+open Frontend.Ast
 
-let rec inlist x = function
-  | [] -> false
-  | y :: rest -> if x = y then true else inlist x rest
+(** Returns true if x is contained in the list l. *)
+let inlist l x = List.exists l ~f:((=) x)
 
-(* free_vars (bvars, e) returns a
-    list, with no duplicates, of all free variables
-    of e that are not in the list bvars.
-*)
-let free_vars (bvars, exp) =
+(** Return a list of the free variables in an expression that are not also
+    contained in a list of bound variables.
+
+    TODO me390: See if the use of List instead of Set here has any significant
+    impact on performance. *)
+let free_vars bvars exp =
   let rec aux bound free = function
-    | Var x -> if inlist x bound || inlist x free then free else x :: free
+    | Var x -> if inlist bound x || inlist free x then free else x :: free
     | UnaryOp (_, e) -> aux bound free e
     | Op (e1, _, e2) -> aux bound (aux bound free e1) e2
     | If (e1, e2, e3) -> aux bound (aux bound (aux bound free e1) e2) e3
