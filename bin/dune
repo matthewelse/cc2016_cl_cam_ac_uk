@@ -1,5 +1,5 @@
 (executable
   (name main)
-  (libraries core async slang_lib)
+  (libraries core async backend common frontend)
   (preprocess (pps ppx_jane))
 )

@@ -1,6 +1,5 @@
-type code_index = int
-
-type stack_index = int
+open Frontend
+open Common
 
 type vm_state
 

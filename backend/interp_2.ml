@@ -15,7 +15,8 @@ What do I mean by "high-level"?
 ---Program variables contained in code.
 *)
 open Core
-open Ast
+open Frontend.Ast
+open Common
 
 let complain = Errors.complain
 

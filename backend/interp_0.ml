@@ -24,7 +24,8 @@
     if the input expressin has passed static analysis, then such "run time"
     errors should never happen! (Can you prove that?)
 *)
-open Ast
+open Frontend.Ast
+open Common
 
 let complain = Errors.complain
 

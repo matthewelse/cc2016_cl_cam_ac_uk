@@ -15,7 +15,8 @@ Timothy G. Griffin (tgg22@cam.ac.uk)
    --- compiler elimnates WHILE construct
 *)
 open Core
-open Ast
+open Frontend.Ast
+open Common
 
 let complain = Errors.complain
 

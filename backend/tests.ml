@@ -1,3 +1,5 @@
+open Common
+
 let test_dir = "tests/"
 
 let manifest_file = test_dir ^ "manifest.txt"

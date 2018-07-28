@@ -1,4 +1,5 @@
 open Lexing
+open Common
 
 let error file action s =
   Errors.complain ("\nERROR in " ^ file ^ " with " ^ action ^ " : " ^ s ^ "\n")
@@ -54,4 +55,5 @@ let translate (options: Options.t) e =
   e'
 
 (* the front end *)
-let front_end options file = translate options (check options (parse options (init_lexbuf file)))
+let front_end options file =
+  translate options (check options (parse options (init_lexbuf file)))

@@ -12,7 +12,9 @@ Timothy G. Griffin (tgg22@cam.ac.uk)
 
 *)
 open Core
-open Ast
+open Frontend
+open Frontend.Ast
+open Common
 
 let complain = Errors.complain
 

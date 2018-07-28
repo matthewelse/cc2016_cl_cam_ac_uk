@@ -1,4 +1,6 @@
-open Ast
+open Frontend
+open Common
+open Frontend.Ast
 
 type code_index = int
 

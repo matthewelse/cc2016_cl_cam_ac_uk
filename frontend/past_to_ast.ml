@@ -9,6 +9,7 @@
   Could types be useful in later phases of the compiler?
 
 *)
+open Common
 
 let translate_uop = function Past.NEG -> Ast.NEG | Past.NOT -> Ast.NOT
 
