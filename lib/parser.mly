@@ -104,6 +104,3 @@ texpr:
 | texpr REF                          { Past.TEref $1 } 
 | LPAREN texpr RPAREN                { $2 } 
 
-
-
-
