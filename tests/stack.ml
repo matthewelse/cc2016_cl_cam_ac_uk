@@ -19,7 +19,7 @@ let%expect_test "stack1" =
     32
     32
     32
-    32 |}]
+    (Int 32) |}]
 
 let%expect_test "stack2" =
   Test.run {|
@@ -41,4 +41,4 @@ let%expect_test "stack2" =
     17
     17
     17
-    17 |}]
+    (Int 17) |}]

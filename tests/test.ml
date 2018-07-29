@@ -27,7 +27,7 @@ let i3 options expr =
 let i4 options expr =
   Backend.Jargon.compile options expr
   |> Interpreters.Jargon.interpret options
-  |> Interpreters.Jargon.string_of_value
+  |> Interpreters.Jargon.Vm_state.string_of_value
 
 let run input_text =
   let interpreters = [i0; i1; i2; i3; i4] in

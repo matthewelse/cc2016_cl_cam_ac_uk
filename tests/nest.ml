@@ -15,7 +15,7 @@ let%expect_test "nest1" =
     7
     7
     7
-    7 |}]
+    (Int 7) |}]
 
 let%expect_test "nest2" =
   Test.run {|
@@ -37,4 +37,4 @@ let%expect_test "nest2" =
     42
     42
     42
-    42 |}]
+    (Int 42) |}]

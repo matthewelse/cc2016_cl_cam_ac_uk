@@ -7,7 +7,7 @@ let%expect_test "ref1" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]
 
 let%expect_test "ref2" =
   Test.run {|
@@ -24,7 +24,7 @@ let%expect_test "ref2" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]
 
 let%expect_test "ref3" =
   Test.run {|
@@ -41,4 +41,4 @@ let%expect_test "ref3" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]

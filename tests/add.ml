@@ -7,7 +7,7 @@ let%expect_test "add" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]
 
 let%expect_test "add2" =
   Test.run "1 + (88 + 12)";
@@ -17,7 +17,7 @@ let%expect_test "add2" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]
 
 
 let%expect_test "add3" =
@@ -33,7 +33,7 @@ let%expect_test "add3" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]
 
 let%expect_test "add4" =
   Test.run {|
@@ -52,7 +52,7 @@ let%expect_test "add4" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]
 
 let%expect_test "add5" =
   Test.run {|
@@ -75,7 +75,7 @@ let%expect_test "add5" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]
 
 let%expect_test "add6" =
   Test.run {|
@@ -90,7 +90,7 @@ let%expect_test "add6" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]
 
 let%expect_test "add7" =
   Test.run {|
@@ -107,4 +107,4 @@ let%expect_test "add7" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]

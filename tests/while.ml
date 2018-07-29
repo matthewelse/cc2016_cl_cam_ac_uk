@@ -16,4 +16,4 @@ let%expect_test "while" =
     3
     3
     3
-    3 |}]
+    (Int 3) |}]

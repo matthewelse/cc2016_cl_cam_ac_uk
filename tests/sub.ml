@@ -7,4 +7,4 @@ let%expect_test "sub" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]

@@ -7,7 +7,7 @@ let%expect_test "lambda1" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]
 
 let%expect_test "lambda2" =
   Test.run {|
@@ -25,7 +25,7 @@ let%expect_test "lambda2" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]
 
 let%expect_test "lambda3" =
   Test.run {|
@@ -42,4 +42,4 @@ let%expect_test "lambda3" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]

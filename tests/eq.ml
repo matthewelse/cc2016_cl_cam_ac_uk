@@ -6,7 +6,7 @@ let%expect_test "eq1" =
     true
     true
     true
-    true |}]
+    (Bool true) |}]
 
 let%expect_test "eq2" =
   Test.run "true = true";
@@ -16,7 +16,7 @@ let%expect_test "eq2" =
     true
     true
     true
-    true |}]
+    (Bool true) |}]
 
 let%expect_test "eq3" =
   Test.run "101 = 102";
@@ -26,7 +26,7 @@ let%expect_test "eq3" =
     false
     false
     false
-    false |}]
+    (Bool false) |}]
 
 let%expect_test "eq4" =
   Test.run "true = false";
@@ -36,4 +36,4 @@ let%expect_test "eq4" =
     false
     false
     false
-    false |}]
+    (Bool false) |}]

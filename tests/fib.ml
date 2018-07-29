@@ -43,37 +43,37 @@ let%expect_test "fib" =
     1
     1
     1
+    (Int 1)
     1
     1
     1
     1
-    1
-    1
+    (Int 1)
     2
     2
     2
     2
-    2
+    (Int 2)
     3
     3
     3
     3
-    3
+    (Int 3)
     5
     5
     5
     5
-    5
+    (Int 5)
     8
     8
     8
     8
-    8
+    (Int 8)
     89
     89
     89
     89
-    89 |}]
+    (Int 89) |}]
 
 let%expect_test "fibv2" =
   List.iter [5, 1] ~f:fibv2;
@@ -83,5 +83,5 @@ let%expect_test "fibv2" =
     8
     8
     8
-    8
+    (Int 8)
   |}]

@@ -6,4 +6,4 @@ let%expect_test "bool" =
     false
     false
     false
-    false |}]
+    (Bool false) |}]

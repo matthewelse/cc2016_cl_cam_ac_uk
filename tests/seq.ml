@@ -13,7 +13,7 @@ let%expect_test "seq1" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]
 
 let%expect_test "seq2" =
   Test.run {|
@@ -34,7 +34,7 @@ let%expect_test "seq2" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]
 
 let%expect_test "seq3" =
   Test.run {|
@@ -54,4 +54,4 @@ let%expect_test "seq3" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]

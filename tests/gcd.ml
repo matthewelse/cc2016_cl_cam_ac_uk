@@ -25,4 +25,4 @@ let%expect_test "gcd" =
     2
     2
     2
-    2 |}]
+    (Int 2) |}]

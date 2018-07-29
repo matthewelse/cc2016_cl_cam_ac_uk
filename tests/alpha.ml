@@ -18,4 +18,4 @@ let%expect_test "alpha" =
     72
     72
     72
-    72 |}]
+    (Int 72) |}]

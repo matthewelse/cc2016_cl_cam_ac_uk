@@ -15,7 +15,7 @@ let%expect_test "let1" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]
 
 let%expect_test "let2" =
   Test.run {|
@@ -33,4 +33,4 @@ let%expect_test "let2" =
     101
     101
     101
-    101 |}]
+    (Int 101) |}]
