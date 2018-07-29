@@ -1,7 +1,10 @@
 open Common
 
-type vm_state
+module Vm_state : sig
+    type t
 
-val interpret : Options.t -> Common.Jargon.instruction list -> vm_state
+    val to_string : t -> string
+    val string_of_value : t -> string
+end
 
-val string_of_value : vm_state -> string
+val interpret : Options.t -> Common.Jargon.Instruction.t list -> Vm_state.t

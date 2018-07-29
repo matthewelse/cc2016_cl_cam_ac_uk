@@ -6,14 +6,7 @@ open Frontend
 open Interpreters
 open Backend
 
-let run input_file interpreters =
-  let options : Options.t =
-    { verbose_front= false
-    ; verbose_tree= false
-    ; verbose_back= false
-    ; stack_max= 1000
-    ; heap_max= 1000 }
-  in
+let run input_file interpreters options =
   let e = Front_end.front_end options input_file in
   List.iter interpreters ~f:(fun interpreter ->
       let result = interpreter options e in
@@ -21,18 +14,28 @@ let run input_file interpreters =
   |> return
 
 let i0 _options expr =
-  Interp_0.interpret_top_level expr |> Interp_0.string_of_value
+  Compiler_0.compile expr
+  |> Interp_0.interpret_top_level
+  |> Interp_0.string_of_value
 
 let i1 options expr =
-  Interp_1.interpret options expr |> Interp_1.string_of_value
+  Interp_1.interpret options expr 
+  |> Interp_1.string_of_value
 
 let i2 options expr =
-  Interp_2.interpret options expr |> Interp_2.string_of_value
+  Backend.Compiler_2.compile expr
+  |> Interp_2.interpret options
+  |> Interp_2.string_of_value
 
 let i3 options expr =
-  Interp_3.interpret options expr |> Interp_3.string_of_value
+  Backend.Compiler_3.compile options expr
+  |> Interp_3.interpret options
+  |> Common.Interp_3.string_of_value
 
-let i4 options expr = Backend.Jargon.compile options expr |> Interpreters.Jargon.interpret options |> Interpreters.Jargon.string_of_value
+let i4 options expr =
+  Backend.Jargon.compile options expr
+  |> Interpreters.Jargon.interpret options
+  |> Interpreters.Jargon.Vm_state.string_of_value
 
 let interpreter = function
   | "I0" -> i0
@@ -49,10 +52,21 @@ let interpreter = Command.Arg_type.create interpreter
 let run =
   let open Command.Let_syntax in
   let%map_open input_file = anon ("file" %: file)
-  and interpreters =
-    flag "-interpreter" (listed interpreter) ~doc:"Interpreter to use"
+  and interpreters = flag "-interpreter" (listed interpreter) ~doc:"Interpreter to use"
+  and verbose_back = flag "-verbose-back" no_arg ~doc:"FLAG verbose back-end"
+  and verbose_front = flag "-verbose-front" no_arg ~doc:"FLAG verbose front-end"
+  and verbose_tree = flag "-verbose-tree" no_arg ~doc:"FLAG verbose tree"
+  and stack_max = flag "-stack-max" (optional_with_default 1000 int) ~doc:"INT max heap size"
+  and heap_max = flag "-heap-max" (optional_with_default 1000 int) ~doc:"INT max heap size"
   in
-  fun () -> run input_file interpreters
+  let options : Options.t =
+    { verbose_front
+    ; verbose_tree
+    ; verbose_back
+    ; stack_max
+    ; heap_max }
+  in
+  fun () -> run input_file interpreters options
 
 let command =
   Command.async ~summary:"slang compiler"

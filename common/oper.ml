@@ -1,6 +1,8 @@
 type oper = ADD | MUL | DIV | SUB | LT | AND | OR | EQB | EQI
+[@@deriving sexp_of]
 
 type unary_oper = NEG | NOT | READ
+[@@deriving sexp_of]
 
 let pp_uop = function NEG -> "-" | NOT -> "~" | READ -> "read"
 
