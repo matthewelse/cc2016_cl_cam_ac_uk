@@ -1,5 +1,5 @@
 (executable
   (name main)
-  (libraries core async backend common frontend)
+  (libraries core async backend common frontend interpreters)
   (preprocess (pps ppx_jane))
 )

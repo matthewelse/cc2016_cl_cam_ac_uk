@@ -3,6 +3,7 @@ open Async
 
 open Common
 open Frontend
+open Interpreters
 open Backend
 
 let run input_file interpreters =
@@ -31,15 +32,14 @@ let i2 options expr =
 let i3 options expr =
   Interp_3.interpret options expr |> Interp_3.string_of_value
 
-let i4 options expr = Jargon.interpret options expr |> Jargon.string_of_value
+let i4 options expr = Backend.Jargon.compile options expr |> Interpreters.Jargon.interpret options |> Interpreters.Jargon.string_of_value
 
 let interpreter = function
   | "I0" -> i0
   | "I1" -> i1
   | "I2" -> i2
   | "I3" -> i3
-  | "I4" -> i4
-  | "Jargon" -> i4
+  | "I4" | "Jargon" | "JARGON" -> i4
   | i ->
       eprintf "Unknown interpreter %s" i ;
       Core.exit 1
