@@ -2,6 +2,7 @@ open Core
 
 open Backend
 open Frontend
+open Interpreters
 open Common
 
 let i0 _options expr =
@@ -16,7 +17,7 @@ let i2 options expr =
 let i3 options expr =
   Interp_3.interpret options expr |> Interp_3.string_of_value
 
-let i4 options expr = Jargon.interpret options expr |> Jargon.string_of_value
+let i4 options expr = Backend.Jargon.compile options expr |> Interpreters.Jargon.interpret options |> Interpreters.Jargon.string_of_value
 
 let run input_text =
   let interpreters = [i0; i1; i2; i3; i4] in

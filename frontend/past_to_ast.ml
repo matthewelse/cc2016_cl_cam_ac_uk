@@ -1,28 +1,27 @@
-(*   translate_expr : Past.expr -> Ast.expr
-     Translates parsed AST to internal AST :
-     1) drop file locations
-     2) drop types
-     3) remove let
-     ) replace "?" (What) with unary function call
+(** Translate parsed AST to internal AST:
 
-  Note : our front-end drops type information.  Is this really a good idea?
-  Could types be useful in later phases of the compiler?
+  1. Drop file locations
+  2. Drop types
+  3. Remove let
+  4. Replace '?' with unary function call.
 
+  Note: our front-end drops type information - is this really a good idea? Could types be
+  useful in later phases of the compiler?
 *)
 open Common
 
-let translate_uop = function Past.NEG -> Ast.NEG | Past.NOT -> Ast.NOT
+let translate_uop = function Past.NEG -> Oper.NEG | Past.NOT -> Oper.NOT
 
 let translate_bop = function
-  | Past.ADD -> Ast.ADD
-  | Past.MUL -> Ast.MUL
-  | Past.DIV -> Ast.DIV
-  | Past.SUB -> Ast.SUB
-  | Past.LT -> Ast.LT
-  | Past.AND -> Ast.AND
-  | Past.OR -> Ast.OR
-  | Past.EQI -> Ast.EQI
-  | Past.EQB -> Ast.EQB
+  | Past.ADD -> Oper.ADD
+  | Past.MUL -> Oper.MUL
+  | Past.DIV -> Oper.DIV
+  | Past.SUB -> Oper.SUB
+  | Past.LT ->  Oper.LT
+  | Past.AND -> Oper.AND
+  | Past.OR ->  Oper.OR
+  | Past.EQI -> Oper.EQI
+  | Past.EQB -> Oper.EQB
   | Past.EQ ->
       Errors.complain
         "internal error, translate found a EQ that should have been resolved \
@@ -30,7 +29,7 @@ let translate_bop = function
 
 let rec translate_expr = function
   | Past.Unit _ -> Ast.Unit
-  | Past.What _ -> Ast.UnaryOp (Ast.READ, Ast.Unit)
+  | Past.What _ -> Ast.UnaryOp (Oper.READ, Ast.Unit)
   | Past.Var (_, x) -> Ast.Var x
   | Past.Integer (_, n) -> Ast.Integer n
   | Past.Boolean (_, b) -> Ast.Boolean b
@@ -48,10 +47,8 @@ let rec translate_expr = function
       Ast.Case (translate_expr e, translate_lambda l1, translate_lambda l2)
   | Past.Lambda (_, l) -> Ast.Lambda (translate_lambda l)
   | Past.App (_, e1, e2) -> Ast.App (translate_expr e1, translate_expr e2)
-  (*
-       Replace "let" with abstraction and application. For example, translate
-        "let x = e1 in e2 end" to "(fun x -> e2) e1"
-    *)
+  (* Replace "let" with abstraction and application. For example, translate "let x = e1
+     in e2 end" to "(fun x -> e2) e1" *)
   | Past.Let (_, x, _, e1, e2) ->
       Ast.App (Ast.Lambda (x, translate_expr e2), translate_expr e1)
   | Past.LetFun (_, f, l, _, e) ->

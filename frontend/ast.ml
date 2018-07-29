@@ -1,16 +1,14 @@
+open Common
+
 type var = string
-
-type oper = ADD | MUL | DIV | SUB | LT | AND | OR | EQB | EQI
-
-type unary_oper = NEG | NOT | READ
 
 type expr =
   | Unit
   | Var of var
   | Integer of int
   | Boolean of bool
-  | UnaryOp of unary_oper * expr
-  | Op of expr * oper * expr
+  | UnaryOp of Oper.unary_oper * expr
+  | Op of expr * Oper.oper * expr
   | If of expr * expr * expr
   | Pair of expr * expr
   | Fst of expr
@@ -38,28 +36,11 @@ open Format
    http://caml.inria.fr/pub/docs/manual-ocaml/libref/Format.html
 *)
 
-let pp_uop = function NEG -> "-" | NOT -> "~" | READ -> "read"
-
-let pp_bop = function
-  | ADD -> "+"
-  | MUL -> "*"
-  | DIV -> "/"
-  | SUB -> "-"
-  | LT -> "<"
-  | EQI -> "eqi"
-  | EQB -> "eqb"
-  | AND -> "&&"
-  | OR -> "||"
-
-let string_of_oper = pp_bop
-
-let string_of_unary_oper = pp_uop
-
 let fstring ppf s = fprintf ppf "%s" s
 
-let pp_unary ppf t = fstring ppf (pp_uop t)
+let pp_unary ppf t = fstring ppf (Oper.pp_uop t)
 
-let pp_binary ppf t = fstring ppf (pp_bop t)
+let pp_binary ppf t = fstring ppf (Oper.pp_bop t)
 
 let rec pp_expr ppf = function
   | Unit -> fstring ppf "()"
@@ -108,19 +89,6 @@ let eprint_expr e =
 
 (* useful for debugging *)
 
-let string_of_uop = function NEG -> "NEG" | NOT -> "NOT" | READ -> "READ"
-
-let string_of_bop = function
-  | ADD -> "ADD"
-  | MUL -> "MUL"
-  | DIV -> "DIV"
-  | SUB -> "SUB"
-  | LT -> "LT"
-  | EQI -> "EQI"
-  | EQB -> "EQB"
-  | AND -> "AND"
-  | OR -> "OR"
-
 let mk_con con l =
   let rec aux carry = function
     | [] -> carry ^ ")"
@@ -134,9 +102,9 @@ let rec string_of_expr = function
   | Var x -> mk_con "Var" [x]
   | Integer n -> mk_con "Integer" [string_of_int n]
   | Boolean b -> mk_con "Boolean" [string_of_bool b]
-  | UnaryOp (op, e) -> mk_con "UnaryOp" [string_of_uop op; string_of_expr e]
+  | UnaryOp (op, e) -> mk_con "UnaryOp" [Oper.string_of_uop op; string_of_expr e]
   | Op (e1, op, e2) ->
-      mk_con "Op" [string_of_expr e1; string_of_bop op; string_of_expr e2]
+      mk_con "Op" [string_of_expr e1; Oper.string_of_bop op; string_of_expr e2]
   | If (e1, e2, e3) ->
       mk_con "If" [string_of_expr e1; string_of_expr e2; string_of_expr e3]
   | Pair (e1, e2) -> mk_con "Pair" [string_of_expr e1; string_of_expr e2]

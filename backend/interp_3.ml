@@ -12,7 +12,7 @@ Timothy G. Griffin (tgg22@cam.ac.uk)
        labels and goto.
    --- labels translated to numeric addresses.
    --- include "code pointer" in state
-   --- compiler elimnates WHILE construct
+   --- compiler eliminates WHILE construct
 *)
 open Core
 open Frontend.Ast
@@ -39,8 +39,8 @@ type value =
 and instruction =
   | PUSH of value
   | LOOKUP of var
-  | UNARY of unary_oper
-  | OPER of oper
+  | UNARY of Oper.unary_oper
+  | OPER of Oper.oper
   | ASSIGN
   | SWAP
   | POP
@@ -127,8 +127,8 @@ and string_of_location = function
   | l, Some i -> l ^ " = " ^ string_of_int i
 
 and string_of_instruction = function
-  | UNARY op -> "UNARY " ^ string_of_uop op
-  | OPER op -> "OPER " ^ string_of_bop op
+  | UNARY op -> "UNARY " ^ Oper.string_of_uop op
+  | OPER op -> "OPER " ^ Oper.string_of_bop op
   | MK_PAIR -> "MK_PAIR"
   | FST -> "FST"
   | SND -> "SND"
@@ -204,13 +204,13 @@ let readint () =
   Utils.read_int ()
 
 let do_unary = function
-  | NOT, BOOL m -> BOOL (not m)
+  | Oper.NOT, BOOL m -> BOOL (not m)
   | NEG, INT m -> INT (-m)
   | READ, UNIT -> INT (readint ())
-  | op, _ -> complain ("malformed unary operator: " ^ string_of_unary_oper op)
+  | op, _ -> complain ("malformed unary operator: " ^ Oper.string_of_uop op)
 
 let do_oper = function
-  | AND, BOOL m, BOOL n -> BOOL (m && n)
+  | Oper.AND, BOOL m, BOOL n -> BOOL (m && n)
   | OR, BOOL m, BOOL n -> BOOL (m || n)
   | EQB, BOOL m, BOOL n -> BOOL (m = n)
   | LT, INT m, INT n -> BOOL (m < n)
@@ -219,7 +219,7 @@ let do_oper = function
   | SUB, INT m, INT n -> INT (m - n)
   | MUL, INT m, INT n -> INT (m * n)
   | DIV, INT m, INT n -> INT (m / n)
-  | op, _, _ -> complain ("malformed binary operator: " ^ string_of_oper op)
+  | op, _, _ -> complain ("malformed binary operator: " ^ Oper.string_of_bop op)
 
 let step t (cp, evs) =
   match (get_instruction t cp, evs) with

@@ -34,9 +34,9 @@ type value =
 and closure = (var * expr * env)
 
 and continuation_action =
-  | UNARY of unary_oper
-  | OPER of oper * value
-  | OPER_FST of Ast.expr * env * Ast.oper
+  | UNARY of Oper.unary_oper
+  | OPER of Oper.oper * value
+  | OPER_FST of Ast.expr * env * Oper.oper
   | ASSIGN of value
   | ASSIGN_FST of Ast.expr * env
   | TAIL of Ast.expr list * env
@@ -110,18 +110,14 @@ let lookup (env, x) =
   in
   aux env
 
-let readint () =
-  let _ = print_string "input> " in
-  Utils.read_int ()
-
 let do_unary = function
-  | NOT, BOOL m -> BOOL (not m)
+  | Oper.NOT, BOOL m -> BOOL (not m)
   | NEG, INT m -> INT (-m)
-  | READ, UNIT -> INT (readint ())
-  | op, _ -> complain ("malformed unary operator: " ^ string_of_unary_oper op)
+  | READ, UNIT -> INT (Utils.read_int ())
+  | op, _ -> complain ("malformed unary operator: " ^ Oper.string_of_uop op)
 
 let do_oper = function
-  | AND, BOOL m, BOOL n -> BOOL (m && n)
+  | Oper.AND, BOOL m, BOOL n -> BOOL (m && n)
   | OR, BOOL m, BOOL n -> BOOL (m || n)
   | EQB, BOOL m, BOOL n -> BOOL (m = n)
   | LT, INT m, INT n -> BOOL (m < n)
@@ -130,23 +126,18 @@ let do_oper = function
   | SUB, INT m, INT n -> INT (m - n)
   | MUL, INT m, INT n -> INT (m * n)
   | DIV, INT m, INT n -> INT (m / n)
-  | op, _, _ -> complain ("malformed binary operator: " ^ string_of_oper op)
+  | op, _, _ -> complain ("malformed binary operator: " ^ Oper.string_of_bop op)
 
 let string_of_list sep f l =
-  let rec aux f = function
-    | [] -> ""
-    | [t] -> f t
-    | t :: rest -> f t ^ sep ^ aux f rest
-  in
-  "[" ^ aux f l ^ "]"
+  let inner = List.map l ~f |> String.concat ~sep in
+  "[" ^ inner ^ "]"
 
 let rec string_of_value = function
   | REF a -> "REF(" ^ string_of_int a ^ ")"
   | BOOL b -> string_of_bool b
   | INT n -> string_of_int n
   | UNIT -> "UNIT"
-  | PAIR (v1, v2) ->
-      "(" ^ string_of_value v1 ^ ", " ^ string_of_value v2 ^ ")"
+  | PAIR (v1, v2) -> "(" ^ string_of_value v1 ^ ", " ^ string_of_value v2 ^ ")"
   | INL v -> "INL(" ^ string_of_value v ^ ")"
   | INR v -> "INR(" ^ string_of_value v ^ ")"
   | CLOSURE cl -> "CLOSURE(" ^ string_of_closure cl ^ ")"
@@ -162,7 +153,7 @@ and string_of_binding (x, v) = "(" ^ x ^ ", " ^ string_of_value v ^ ")"
 let string_of_expr_list = string_of_list "; " Ast.string_of_expr
 
 let string_of_continuation_action = function
-  | UNARY op -> "UNARY " ^ string_of_unary_oper op
+  | UNARY op -> "UNARY " ^ Oper.string_of_uop op
   | MKPAIR v -> "MKPAIR " ^ string_of_value v
   | FST -> "FST"
   | SND -> "SND"
@@ -172,7 +163,7 @@ let string_of_continuation_action = function
   | ARG (e, env) ->
       "ARG(" ^ Ast.string_of_expr e ^ ", " ^ string_of_env env ^ ")"
   | OPER (op, v) ->
-      "OPER(" ^ string_of_oper op ^ ", " ^ string_of_value v ^ ")"
+      "OPER(" ^ Oper.string_of_bop op ^ ", " ^ string_of_value v ^ ")"
   | CASE (x1, e1, x2, e2, env) ->
       "CASE(" ^ x1 ^ ", " ^ Ast.string_of_expr e1 ^ ", " ^ x2 ^ ", "
       ^ Ast.string_of_expr e2 ^ ", " ^ string_of_env env ^ ")"
@@ -180,7 +171,7 @@ let string_of_continuation_action = function
       "PAIR_FST(" ^ Ast.string_of_expr e ^ ", " ^ string_of_env env ^ ")"
   | OPER_FST (e, env, op) ->
       "OPER_FST(" ^ Ast.string_of_expr e ^ ", " ^ string_of_env env ^ ", "
-      ^ string_of_oper op ^ ")"
+      ^ Oper.string_of_bop op ^ ")"
   | IF (e1, e2, env) ->
       "IF(" ^ Ast.string_of_expr e1 ^ ", " ^ Ast.string_of_expr e2 ^ ", "
       ^ string_of_env env ^ ")"
@@ -288,12 +279,9 @@ let step t = function
       complain ("step : malformed state = " ^ string_of_state state ^ "\n")
 
 let rec driver t n state =
-  let _ =
-    if t.options.verbose_back then
-      print_string
-        ("\nstate " ^ string_of_int n ^ " = \n" ^ string_of_state state ^ "\n")
-    else ()
-  in
+  if t.options.verbose_back then
+    print_string
+      ("\nstate " ^ string_of_int n ^ " = \n" ^ string_of_state state ^ "\n") ;
   match state with
   | COMPUTE ([], v) -> v
   | _ -> driver t (n + 1) (step t state)
@@ -303,7 +291,7 @@ let eval t (e, env) = driver t 1 (EXAMINE (e, env, []))
 (* env_empty : env *)
 let env_empty = []
 
-(* interpret : expr -> value *)
+(* interpret : Options.t -> expr -> value *)
 let interpret (options: Options.t) e =
   let t =
     { heap= Array.init options.heap_max ~f:(fun _ -> INT 0)
