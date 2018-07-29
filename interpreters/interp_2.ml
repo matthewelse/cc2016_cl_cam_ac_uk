@@ -15,56 +15,10 @@ What do I mean by "high-level"?
 ---Program variables contained in code.
 *)
 open Core
-open Frontend.Ast
 open Common
+open Common.Interp_2
 
 let complain = Errors.complain
-
-type address = int
-
-type var = string
-
-type value =
-  | REF of address
-  | INT of int
-  | BOOL of bool
-  | UNIT
-  | PAIR of value * value
-  | INL of value
-  | INR of value
-  | CLOSURE of closure
-  | REC_CLOSURE of code
-
-and closure = (code * env)
-
-and instruction =
-  | PUSH of value
-  | LOOKUP of var
-  | UNARY of Oper.unary_oper
-  | OPER of Oper.oper
-  | ASSIGN
-  | SWAP
-  | POP
-  | BIND of var
-  | FST
-  | SND
-  | DEREF
-  | APPLY
-  | MK_PAIR
-  | MK_INL
-  | MK_INR
-  | MK_REF
-  | MK_CLOSURE of code
-  | MK_REC of var * code
-  | TEST of code * code
-  | CASE of code * code
-  | WHILE of code * code
-
-and code = instruction list
-
-and binding = (var * value)
-
-and env = binding list
 
 type env_or_value = EV of env | V of value
 
@@ -73,12 +27,8 @@ type env_or_value = EV of env | V of value
 type t = {heap: value Array.t; options: Options.t; mutable next_address: int}
 
 let string_of_list sep f l =
-  let rec aux f = function
-    | [] -> ""
-    | [t] -> f t
-    | t :: rest -> f t ^ sep ^ aux f rest
-  in
-  "[" ^ aux f l ^ "]"
+  let inner = List.map l ~f |> String.concat ~sep in
+  "[" ^ inner ^ "]"
 
 let rec string_of_value = function
   | REF a -> "REF(" ^ string_of_int a ^ ")"
@@ -208,14 +158,10 @@ let rec evs_to_env = function
   | V _ :: rest -> evs_to_env rest
   | EV env :: rest -> env @ evs_to_env rest
 
-let readint () =
-  let _ = print_string "input> " in
-  Utils.read_int ()
-
 let do_unary = function
   | Oper.NOT, BOOL m -> BOOL (not m)
   | NEG, INT m -> INT (-m)
-  | READ, UNIT -> INT (readint ())
+  | READ, UNIT -> INT (Utils.read_int ())
   | op, _ -> complain ("malformed unary operator: " ^ Oper.string_of_uop op)
 
 let do_oper = function
@@ -281,66 +227,19 @@ let rec driver t n state =
   in
   match state with [], [V v] -> v | _ -> driver t (n + 1) (step t state)
 
-(* A BIND will leave an env on stack.
-   This gets rid of it.  *)
-let leave_scope = [SWAP; POP]
 
-(*
-   val compile : expr -> code
-*)
-let rec compile = function
-  | Unit -> [PUSH UNIT]
-  | Integer n -> [PUSH (INT n)]
-  | Boolean b -> [PUSH (BOOL b)]
-  | Var x -> [LOOKUP x]
-  | UnaryOp (op, e) -> compile e @ [UNARY op]
-  | Op (e1, op, e2) -> compile e1 @ compile e2 @ [OPER op]
-  | Pair (e1, e2) -> compile e1 @ compile e2 @ [MK_PAIR]
-  | Fst e -> compile e @ [FST]
-  | Snd e -> compile e @ [SND]
-  | Inl e -> compile e @ [MK_INL]
-  | Inr e -> compile e @ [MK_INR]
-  | Case (e, (x1, e1), (x2, e2)) ->
-      compile e
-      @ [ CASE
-            ( (BIND x1 :: compile e1) @ leave_scope
-            , (BIND x2 :: compile e2) @ leave_scope ) ]
-  | If (e1, e2, e3) -> compile e1 @ [TEST (compile e2, compile e3)]
-  | Seq [] -> []
-  | Seq [e] -> compile e
-  | Seq (e :: rest) -> compile e @ [POP] @ compile (Seq rest)
-  | Ref e -> compile e @ [MK_REF]
-  | Deref e -> compile e @ [DEREF]
-  | While (e1, e2) ->
-      let cl = compile e1 in
-      cl @ [WHILE (cl, compile e2)]
-  | Assign (e1, e2) -> compile e1 @ compile e2 @ [ASSIGN]
-  | App (e1, e2) ->
-      compile e2 (* I chose to evaluate arg first *)
-      @ compile e1 @ [APPLY; SWAP; POP]
-      (* get rid of env left on stack *)
-  | Lambda (x, e) -> [MK_CLOSURE ((BIND x :: compile e) @ leave_scope)]
-  | LetFun (f, (x, body), e) ->
-      MK_CLOSURE ((BIND x :: compile body) @ leave_scope)
-      :: BIND f :: compile e
-      @ leave_scope
-  | LetRecFun (f, (x, body), e) ->
-      MK_REC (f, (BIND x :: compile body) @ leave_scope)
-      :: BIND f :: compile e
-      @ leave_scope
 
 (* The initial Slang state is the Slang state : all locations contain 0 *)
 
 let initial_env = []
 
-(* interpret : expr -> (value * state) *)
-let interpret (options: Options.t) e =
+(* interpret : Options.t -> code -> value *)
+let interpret (options: Options.t) c =
   let t =
     { heap= Array.init options.heap_max ~f:(fun _ -> INT 0)
     ; next_address= 0
     ; options }
   in
-  let c = compile e in
   if options.verbose_back then
     print_string ("Compile code =\n" ^ string_of_code c ^ "\n") ;
   driver t 1 (c, initial_env)
