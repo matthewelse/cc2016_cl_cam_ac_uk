@@ -46,13 +46,6 @@ fp ->[old fp        ]
 
 *)
 
-let positions l =
-  let rec aux k = function
-    | [] -> []
-    | a :: rest -> (a, k) :: aux (k + 1) rest
-  in
-  aux 1 l
-
 let rec comp vmap = 
   let open Common.Jargon.Instruction in
   function
@@ -154,14 +147,14 @@ and comp_lambda vmap (f_opt, x, e) =
   in
   let x_bind = (x, STACK_LOCATION (-2)) in
   let fvars = Free_vars.free_vars bound_vars e in
-  let fvar_bind (y, p) = (y, HEAP_LOCATION p) in
-  let env_bind = List.map (positions fvars) ~f:fvar_bind in
+  let fvar_bind p y = (y, HEAP_LOCATION (p + 1)) in
+  let env_bind = List.mapi fvars ~f:fvar_bind in
   let fetch_fvars = List.map fvars ~f:(fun y -> Lookup (List.Assoc.find_exn vmap  ~equal:(=) y)) in
   let new_vmap = x_bind :: (f_bind @ env_bind @ vmap) in
   let defs, c = comp new_vmap e in
   let def = [Label f] @ c @ [Return] in
   ( def @ defs
-  , List.rev (fetch_fvars @ [Make_closure ((f, None), List.length fvars)]) )
+  , List.rev fetch_fvars @ [Make_closure ((f, None), List.length fvars)] )
 
 let compile (options: Options.t) e =
   let open Common.Jargon.Instruction in
