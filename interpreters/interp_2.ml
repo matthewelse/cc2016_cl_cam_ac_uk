@@ -227,8 +227,6 @@ let rec driver t n state =
   in
   match state with [], [V v] -> v | _ -> driver t (n + 1) (step t state)
 
-
-
 (* The initial Slang state is the Slang state : all locations contain 0 *)
 
 let initial_env = []

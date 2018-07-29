@@ -12,6 +12,7 @@ Timothy G. Griffin (tgg22@cam.ac.uk)
 
 *)
 open Core
+open Backend
 open Frontend
 open Frontend.Ast
 open Common

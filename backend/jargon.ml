@@ -1,3 +1,5 @@
+open Core
+
 open Frontend.Ast
 open Common
 
@@ -133,7 +135,7 @@ let rec comp vmap =
       let defs1, c1 = comp vmap e1 in
       let defs2, c2 = comp vmap e2 in
       (defs1 @ defs2, c2 @ c1 @ [APPLY])
-  | Var x -> ([], [LOOKUP (List.assoc x vmap)])
+  | Var x -> ([], [LOOKUP (List.Assoc.find_exn vmap ~equal:(=) x)])
   | LetFun (f, (x, e1), e2) -> comp vmap (App (Lambda (f, e2), Lambda (x, e1)))
   | Lambda (x, e) -> comp_lambda vmap (None, x, e)
   | LetRecFun (f, (x, e1), e2) ->
@@ -150,9 +152,9 @@ and comp_lambda vmap (f_opt, x, e) =
   in
   let x_bind = (x, STACK_LOCATION (-2)) in
   let fvars = Free_vars.free_vars bound_vars e in
-  let fetch_fvars = List.map (fun y -> LOOKUP (List.assoc y vmap)) fvars in
+  let fetch_fvars = List.map fvars ~f:(fun y -> LOOKUP (List.Assoc.find_exn vmap  ~equal:(=) y)) in
   let fvar_bind (y, p) = (y, HEAP_LOCATION p) in
-  let env_bind = List.map fvar_bind (positions fvars) in
+  let env_bind = List.map (positions fvars) ~f:fvar_bind in
   let new_vmap = x_bind :: (f_bind @ env_bind @ vmap) in
   let defs, c = comp new_vmap e in
   let def = [LABEL f] @ c @ [RETURN] in
