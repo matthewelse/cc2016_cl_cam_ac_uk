@@ -11,7 +11,7 @@ let i0 _options expr =
   |> Interp_0.string_of_value
 
 let i1 options expr =
-  Interp_1.interpret options expr 
+  Interp_1.interpret options expr
   |> Interp_1.string_of_value
 
 let i2 options expr =
@@ -29,12 +29,18 @@ let i4 options expr =
   |> Interpreters.Jargon.interpret options
   |> Interpreters.Jargon.Vm_state.string_of_value
 
+let i5 options expr =
+  Backend.Jargon_reg.compile options expr
+  |> Interpreters.Jargon_reg.interpret options
+  |> Interpreters.Jargon_reg.Vm_state.string_of_value
+
 let run input_text =
-  let interpreters = [i0; i1; i2; i3; i4] in
+  let interpreters = [i0; i1; i2; i3; i4; i5] in
   let options : Options.t =
     { verbose_front= false
     ; verbose_tree= false
     ; verbose_back= false
+    ; verbose_vm= false
     ; stack_max= 1000
     ; heap_max= 1000 }
   in
