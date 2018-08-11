@@ -112,14 +112,36 @@ module Vm_state = struct
   let to_string t =
     let instr = get_instruction t in
     let cp = sprintf !"cp = %d -> %{Instruction}" t.cp instr in
-    let stack = sprintf "Stack =\n %s" (string_of_stack t.stack t.sp) in
-    let heap = sprintf "Heap =\n %s" (string_of_heap t.heap t.hp) in
+    let hp = sprintf !"hp = %d" t.hp in
+    let stack = sprintf "Stack =\n%s" (string_of_stack t.stack t.sp) in
+    let heap =
+      if t.hp = 0 then "Heap empty"
+      else sprintf "Heap =\n%s" (string_of_heap t.heap t.hp)
+    in
     let registers = string_of_register_file t.register_file in
-    String.concat ~sep:"\n" [cp; stack; heap; registers]
+    String.concat ~sep:"\n" [cp; hp; stack; heap; registers]
 
   let stack_top t = (t.stack).(t.sp - 1)
 
-  let string_of_value t = Register_item.to_string (stack_top t)
+  let rec string_of_heap_item t x =
+    match (t.heap).(x) with
+    | Heap_index x -> string_of_heap_item t x
+    | Code_pointer x -> Instruction.to_string (t.code).(x)
+    | Header (_, typ) -> (
+      match typ with
+      | Pair ->
+          sprintf "(%s, %s)"
+            (string_of_heap_item t (x + 1))
+            (string_of_heap_item t (x + 2))
+      | Inl -> sprintf "(inl %s)" (string_of_heap_item t (x + 1))
+      | Inr -> sprintf "(inr %s)" (string_of_heap_item t (x + 1))
+      | Closure -> sprintf "(closure %s)" (string_of_heap_item t (x + 1)) )
+    | _ as item -> Heap_item.to_string item
+
+  let string_of_value t =
+    match get_register t Return_value with
+    | Heap_index x -> string_of_heap_item t x
+    | _ as r -> Register_item.to_string r
 
   (* cp := cp + 1  *)
   let advance_cp t =
@@ -146,11 +168,11 @@ module Vm_state = struct
     else {t with status= StackIndexOutOfBound}
 
   (* reg1 := reg2 op reg3 *)
-  let perform_op t op reg1 reg2 reg3 =
-    let v_right = get_register t reg2 in
-    let v_left = get_register t reg3 in
+  let perform_op t op dest left right =
+    let v_right = get_register t right in
+    let v_left = get_register t left in
     let result = do_oper op v_left v_right in
-    set_register t reg1 result
+    set_register t dest result
 
   (* reg1 := op reg2 *)
   let perform_unary t op reg1 reg2 =
@@ -232,8 +254,8 @@ module Vm_state = struct
     set_register t reg1 (Heap_index a)
 
   (* match reg2 with
-   * | Inr x -> (reg1 := x; goto i)
-   * | Inl y -> (reg1 := y; advance_cp) *)
+   * | Inr x -> (goto i)
+   * | Inl x -> (advance_cp) *)
   let case t reg1 reg2 i =
     let c = get_register t reg2 in
     match c with
@@ -334,14 +356,11 @@ module Vm_state = struct
           let t = push t Frame_pointer in
           (* save the return address *)
           let t = push t Return_address in
-
           let new_fp = t.sp in
           let new_ra = t.cp + 1 in
-
           let t = set_register t Frame_pointer (Frame_pointer new_fp) in
           let t = set_register t Return_address (Return_address new_ra) in
-
-          { t with cp = i }
+          {t with cp= i}
       | _ ->
           Errors.complain "apply: runtime error, expecting code index in heap"
       )
@@ -382,7 +401,7 @@ module Vm_state = struct
     | _ -> Errors.complain ("step : bad state = " ^ to_string t ^ "\n")
 
   let rec driver t ~(options: Options.t) ~n =
-    if options.verbose_back then
+    if options.verbose_vm then
       print_string
         ( "========== state " ^ string_of_int n ^ " ==========\n" ^ to_string t
         ^ "\n" ) ;
@@ -392,7 +411,8 @@ module Vm_state = struct
     | Instruction.Goto (lab, _) -> Instruction.Goto (lab, Some (f lab))
     | Test (reg, (lab, _)) -> Test (reg, (lab, Some (f lab)))
     | Case (reg1, reg2, (lab, _)) -> Case (reg1, reg2, (lab, Some (f lab)))
-    | Make_closure (reg, (lab, _), n) -> Make_closure (reg, (lab, Some (f lab)), n)
+    | Make_closure (reg, (lab, _), n) ->
+        Make_closure (reg, (lab, Some (f lab)), n)
     | inst -> inst
 
   (* put code listing into an array, associate an array index to each label *)
@@ -423,7 +443,7 @@ module Vm_state = struct
   let create (options: Options.t) code =
     let code_array, c_bound = load code in
     let _ =
-      if options.verbose_back then
+      if options.verbose_vm then
         print_string
           ( "\nInstalled Code = \n"
           ^ string_of_installed_code (code_array, c_bound) )
