@@ -4,9 +4,10 @@ open Interpreters.Jargon_reg
 open Common.Jargon_reg
 
 let options : Options.t =
-  { verbose_back= true
+  { verbose_back= false
   ; verbose_front= false
   ; verbose_tree= false
+  ; verbose_vm= true
   ; stack_max= 100
   ; heap_max= 100 }
 
@@ -200,5 +201,3 @@ let%expect_test "pair example" =
     r9: (Int 8)
     fp: (Frame_pointer 0)
     ra: (Return_address 0) |}]
-
-
