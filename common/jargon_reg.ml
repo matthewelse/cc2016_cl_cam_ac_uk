@@ -28,7 +28,12 @@ module Heap_item = struct
     | Header of int * typ
   [@@deriving sexp_of]
 
-  let to_string t = Sexp.to_string (sexp_of_t t)
+  let to_string t =
+    match t with
+    | Int x -> Int.to_string x
+    | Bool b -> Bool.to_string b
+    | Unit -> "()"
+    | _ -> Sexp.to_string (sexp_of_t t)
 end
 
 (**
@@ -46,7 +51,12 @@ module Register_item = struct
     | Frame_pointer of stack_index
   [@@deriving sexp_of]
 
-  let to_string t = Sexp.to_string (sexp_of_t t)
+  let to_string t =
+    match t with
+    | Int x -> Int.to_string x
+    | Bool b -> Bool.to_string b
+    | Unit -> "()"
+    | _ -> Sexp.to_string (sexp_of_t t)
 end
 
 let reg_index = ref 0
@@ -62,7 +72,7 @@ module Register = struct
 
   let to_string = function
     | Temporary t -> sprintf "r%d" t
-    | Return_value -> "r0"
+    | Return_value -> "rv"
     | Frame_pointer -> "fp"
     | Return_address -> "ra"
 
@@ -148,5 +158,5 @@ let string_of_stack stack sp =
 
 let string_of_heap heap limit =
   Array.slice heap 0 limit
-  |> Array.mapi ~f:(sprintf !"%d: %{sexp: Heap_item.t}")
+  |> Array.mapi ~f:(sprintf !"%2.d: %{sexp: Heap_item.t}")
   |> Array.to_list |> String.concat ~sep:"\n"
