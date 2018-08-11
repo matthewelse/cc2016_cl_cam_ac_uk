@@ -1,0 +1,7 @@
+
+(library
+  (name jargon_reg_tests)
+  (libraries core async common backend interpreters)
+  (inline_tests)
+  (preprocess (pps ppx_inline_test ppx_expect))
+)
