@@ -1,5 +1,4 @@
 open Core
-open Async
 open Common
 open Frontend
 open Interpreters
@@ -10,7 +9,6 @@ let run input_file interpreters options =
   List.iter interpreters ~f:(fun interpreter ->
       let result = interpreter options e in
       printf "%s\n" result )
-  |> return
 
 let i0 _options expr =
   Compiler_0.compile expr |> Interp_0.interpret_top_level
@@ -73,7 +71,7 @@ let run =
   fun () -> run input_file interpreters options
 
 let command =
-  Command.async ~summary:"slang compiler"
+  Command.basic ~summary:"slang compiler"
     ~readme:(fun () ->
       "Compiler for the slang language from Cambridge Computer Science Part \
        II compiler construction course." )

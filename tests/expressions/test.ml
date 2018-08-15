@@ -30,6 +30,7 @@ let i4 options expr =
   |> Interpreters.Jargon.Vm_state.string_of_value
 
 let i5 options expr =
+  let options : Options.t = { options with stack_max = 100000; heap_max = 100000 } in
   Backend.Jargon_reg.compile options expr
   |> Interpreters.Jargon_reg.interpret options
   |> Interpreters.Jargon_reg.Vm_state.string_of_value

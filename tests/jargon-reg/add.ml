@@ -27,49 +27,69 @@ let%expect_test "simple test" =
     2: (Oper ADD r3(r1 r2))
     3: Halt
     ========== state 1 ==========
-    cp = 0 -> (Set r1(Int 10))
-    Stack = 0: (Frame_pointer 0)
+    pc = 0 -> (Set r1(Int 10))
+    hp = 0
+    Stack =
+    0: (Frame_pointer 0)
     1: (Return_address 0)
-
+    2: (Heap_index 0)
+    Heap empty
     fp: (Frame_pointer 0)
     ra: (Return_address 0)
+    cp: (Heap_index 0)
     ========== state 2 ==========
-    cp = 1 -> (Set r2(Int 2))
-    Stack = 0: (Frame_pointer 0)
+    pc = 1 -> (Set r2(Int 2))
+    hp = 0
+    Stack =
+    0: (Frame_pointer 0)
     1: (Return_address 0)
-
+    2: (Heap_index 0)
+    Heap empty
     r1: (Int 10)
     fp: (Frame_pointer 0)
     ra: (Return_address 0)
+    cp: (Heap_index 0)
     ========== state 3 ==========
-    cp = 2 -> (Oper ADD r3(r1 r2))
-    Stack = 0: (Frame_pointer 0)
+    pc = 2 -> (Oper ADD r3(r1 r2))
+    hp = 0
+    Stack =
+    0: (Frame_pointer 0)
     1: (Return_address 0)
-
+    2: (Heap_index 0)
+    Heap empty
     r1: (Int 10)
     r2: (Int 2)
     fp: (Frame_pointer 0)
     ra: (Return_address 0)
+    cp: (Heap_index 0)
     ========== state 4 ==========
-    cp = 3 -> Halt
-    Stack = 0: (Frame_pointer 0)
+    pc = 3 -> Halt
+    hp = 0
+    Stack =
+    0: (Frame_pointer 0)
     1: (Return_address 0)
-
+    2: (Heap_index 0)
+    Heap empty
     r1: (Int 10)
     r2: (Int 2)
     r3: (Int 12)
     fp: (Frame_pointer 0)
     ra: (Return_address 0)
+    cp: (Heap_index 0)
     ========== state 5 ==========
-    cp = 3 -> Halt
-    Stack = 0: (Frame_pointer 0)
+    pc = 3 -> Halt
+    hp = 0
+    Stack =
+    0: (Frame_pointer 0)
     1: (Return_address 0)
-
+    2: (Heap_index 0)
+    Heap empty
     r1: (Int 10)
     r2: (Int 2)
     r3: (Int 12)
     fp: (Frame_pointer 0)
-    ra: (Return_address 0) |}]
+    ra: (Return_address 0)
+    cp: (Heap_index 0) |}]
 
 let%expect_test "pair example" =
   let r1 = Register.fresh () in
@@ -99,67 +119,87 @@ let%expect_test "pair example" =
     5: (Oper SUB r9(r7 r8))
     6: Halt
     ========== state 1 ==========
-    cp = 0 -> (Set r4(Int 10))
-    Stack = 0: (Frame_pointer 0)
+    pc = 0 -> (Set r4(Int 10))
+    hp = 0
+    Stack =
+    0: (Frame_pointer 0)
     1: (Return_address 0)
-
+    2: (Heap_index 0)
+    Heap empty
     fp: (Frame_pointer 0)
     ra: (Return_address 0)
+    cp: (Heap_index 0)
     ========== state 2 ==========
-    cp = 1 -> (Set r5(Int 2))
-    Stack = 0: (Frame_pointer 0)
+    pc = 1 -> (Set r5(Int 2))
+    hp = 0
+    Stack =
+    0: (Frame_pointer 0)
     1: (Return_address 0)
-
+    2: (Heap_index 0)
+    Heap empty
     r4: (Int 10)
     fp: (Frame_pointer 0)
     ra: (Return_address 0)
+    cp: (Heap_index 0)
     ========== state 3 ==========
-    cp = 2 -> (Make_pair r6(r5 r4))
-    Stack = 0: (Frame_pointer 0)
+    pc = 2 -> (Make_pair r6(r5 r4))
+    hp = 0
+    Stack =
+    0: (Frame_pointer 0)
     1: (Return_address 0)
-
+    2: (Heap_index 0)
+    Heap empty
     r4: (Int 10)
     r5: (Int 2)
     fp: (Frame_pointer 0)
     ra: (Return_address 0)
+    cp: (Heap_index 0)
     ========== state 4 ==========
-    cp = 3 -> (Fst r7 r6)
-    Stack = 0: (Frame_pointer 0)
+    pc = 3 -> (Fst r7 r6)
+    hp = 3
+    Stack =
+    0: (Frame_pointer 0)
     1: (Return_address 0)
-
+    2: (Heap_index 0)
     Heap =
-    0 -> (Header 3 Pair)
-    1 -> (Int 2)
-    2 -> (Int 10)
+     0: (Header 3 Pair)
+     1: (Int 2)
+     2: (Int 10)
     r4: (Int 10)
     r5: (Int 2)
     r6: (Heap_index 0)
     fp: (Frame_pointer 0)
     ra: (Return_address 0)
+    cp: (Heap_index 0)
     ========== state 5 ==========
-    cp = 4 -> (Snd r8 r6)
-    Stack = 0: (Frame_pointer 0)
+    pc = 4 -> (Snd r8 r6)
+    hp = 3
+    Stack =
+    0: (Frame_pointer 0)
     1: (Return_address 0)
-
+    2: (Heap_index 0)
     Heap =
-    0 -> (Header 3 Pair)
-    1 -> (Int 2)
-    2 -> (Int 10)
+     0: (Header 3 Pair)
+     1: (Int 2)
+     2: (Int 10)
     r4: (Int 10)
     r5: (Int 2)
     r6: (Heap_index 0)
     r7: (Int 2)
     fp: (Frame_pointer 0)
     ra: (Return_address 0)
+    cp: (Heap_index 0)
     ========== state 6 ==========
-    cp = 5 -> (Oper SUB r9(r7 r8))
-    Stack = 0: (Frame_pointer 0)
+    pc = 5 -> (Oper SUB r9(r7 r8))
+    hp = 3
+    Stack =
+    0: (Frame_pointer 0)
     1: (Return_address 0)
-
+    2: (Heap_index 0)
     Heap =
-    0 -> (Header 3 Pair)
-    1 -> (Int 2)
-    2 -> (Int 10)
+     0: (Header 3 Pair)
+     1: (Int 2)
+     2: (Int 10)
     r4: (Int 10)
     r5: (Int 2)
     r6: (Heap_index 0)
@@ -167,37 +207,44 @@ let%expect_test "pair example" =
     r8: (Int 10)
     fp: (Frame_pointer 0)
     ra: (Return_address 0)
+    cp: (Heap_index 0)
     ========== state 7 ==========
-    cp = 6 -> Halt
-    Stack = 0: (Frame_pointer 0)
+    pc = 6 -> Halt
+    hp = 3
+    Stack =
+    0: (Frame_pointer 0)
     1: (Return_address 0)
-
+    2: (Heap_index 0)
     Heap =
-    0 -> (Header 3 Pair)
-    1 -> (Int 2)
-    2 -> (Int 10)
+     0: (Header 3 Pair)
+     1: (Int 2)
+     2: (Int 10)
     r4: (Int 10)
     r5: (Int 2)
     r6: (Heap_index 0)
     r7: (Int 2)
     r8: (Int 10)
-    r9: (Int 8)
+    r9: (Int -8)
     fp: (Frame_pointer 0)
     ra: (Return_address 0)
+    cp: (Heap_index 0)
     ========== state 8 ==========
-    cp = 6 -> Halt
-    Stack = 0: (Frame_pointer 0)
+    pc = 6 -> Halt
+    hp = 3
+    Stack =
+    0: (Frame_pointer 0)
     1: (Return_address 0)
-
+    2: (Heap_index 0)
     Heap =
-    0 -> (Header 3 Pair)
-    1 -> (Int 2)
-    2 -> (Int 10)
+     0: (Header 3 Pair)
+     1: (Int 2)
+     2: (Int 10)
     r4: (Int 10)
     r5: (Int 2)
     r6: (Heap_index 0)
     r7: (Int 2)
     r8: (Int 10)
-    r9: (Int 8)
+    r9: (Int -8)
     fp: (Frame_pointer 0)
-    ra: (Return_address 0) |}]
+    ra: (Return_address 0)
+    cp: (Heap_index 0) |}]

@@ -156,27 +156,27 @@ let rec comp vmap return_reg =
             ; Apply let_lambda
             ; Pop Function_argument ] )
     | App (e1, e2) ->
-
+        (* to reduce stack usage, make registers local to each function. *)
         let push_all_registers =
-          List.range 0 !reg_index
-          |> List.map ~f:(fun x -> Push (Temporary x))
+          List.range 0 !reg_index |> List.map ~f:(fun x -> Push (Temporary x))
         in
         let pop_all_registers =
           List.rev push_all_registers
-        |> List.map ~f:(function Push x -> Pop x | y -> y) in
+          |> List.map ~f:(function Push x -> Pop x | y -> y)
+        in
         let r1 = Register.fresh () in
         let r2 = Register.fresh () in
         let defs1, c1 = comp vmap r1 e1 in
         let defs2, c2 = comp vmap r2 e2 in
         (* compute the argument before the function consuming it *)
         ( defs1 @ defs2
-        , c2 @ c1 @
-        push_all_registers
+        , c2 @ c1 @ push_all_registers
           @ [ Push Function_argument
             ; Mov (Function_argument, r2)
             ; Apply r1
-            ; Pop Function_argument ] @ pop_all_registers
-            @ [Mov (return_reg, Return_value)])
+            ; Pop Function_argument ]
+          @ pop_all_registers
+          @ [Mov (return_reg, Return_value)] )
     | Case _ -> failwith "unable to do cases"
 
 and comp_lambda vmap dest (f_opt, x, e) =
