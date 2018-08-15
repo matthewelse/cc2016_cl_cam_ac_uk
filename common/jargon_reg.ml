@@ -63,7 +63,13 @@ let reg_index = ref 0
 
 module Register = struct
   module T = struct
-    type t = Temporary of int | Return_value | Frame_pointer | Return_address
+    type t =
+      | Temporary of int
+      | Return_value
+      | Frame_pointer
+      | Return_address
+      | Function_argument
+      | Closure_pointer
     [@@deriving sexp, compare]
   end
 
@@ -75,6 +81,8 @@ module Register = struct
     | Return_value -> "rv"
     | Frame_pointer -> "fp"
     | Return_address -> "ra"
+    | Function_argument -> "fa"
+    | Closure_pointer -> "cp"
 
   let sexp_of_t t = Sexp.Atom (to_string t)
 
@@ -83,9 +91,12 @@ module Register = struct
     Temporary !reg_index
 end
 
-(* int is number of items to follow *)
+(* I think this is used when constructing a closure to collect all of the variables we need*)
 
-type value_path = STACK_LOCATION of offset | HEAP_LOCATION of offset
+type value_path =
+  | STACK_LOCATION of offset
+  | HEAP_LOCATION of offset
+  | REGISTER_LOCATION of Register.t
 [@@deriving sexp_of]
 
 module Instruction = struct
@@ -93,6 +104,7 @@ module Instruction = struct
     | Mov of Register.t * Register.t
     | Set of Register.t * Register_item.t
     | Push of Register.t
+    | Pop of Register.t
     | Lookup of Register.t * value_path
     | Unary of Oper.unary_oper * Register.t * Register.t
     | Oper of Oper.oper * Register.t * (Register.t * Register.t)
@@ -101,7 +113,7 @@ module Instruction = struct
     | Snd of Register.t * Register.t
     | Deref of Register.t * Register.t
     | Apply of Register.t
-    | Return of Register.t
+    | Return
     | Make_pair of Register.t * (Register.t * Register.t)
     | Make_inl of Register.t * Register.t
     | Make_inr of Register.t * Register.t
@@ -123,6 +135,7 @@ end
 let string_of_value_path = function
   | STACK_LOCATION offset -> "STACK_LOCATION " ^ string_of_int offset
   | HEAP_LOCATION offset -> "HEAP_LOCATION " ^ string_of_int offset
+  | REGISTER_LOCATION reg -> sprintf !"REGISTER_LOCATION %{Register}" reg
 
 let string_of_location = function
   | l, None -> l

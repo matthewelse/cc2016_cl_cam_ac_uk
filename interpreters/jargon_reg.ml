@@ -27,7 +27,7 @@ module Status = struct
     | CodeIndexOutOfBound
     | StackIndexOutOfBound
     | HeapIndexOutOfBound
-    | StackUnderflow
+    (* | StackUnderflow *)
   [@@deriving sexp_of]
 
   let to_string = function
@@ -36,7 +36,8 @@ module Status = struct
     | CodeIndexOutOfBound -> "code index out-of-bound"
     | StackIndexOutOfBound -> "stack index out-of-bound"
     | HeapIndexOutOfBound -> "heap index out-of-bound"
-    | StackUnderflow -> "stack underflow"
+
+  (* | StackUnderflow -> "stack underflow" *)
 end
 
 let do_unary oper value =
@@ -77,12 +78,16 @@ module Vm_state = struct
     ; code: Instruction.t array
     ; mutable sp: stack_index
     ; (* stack pointer *)
-      mutable cp: code_index
+      mutable pc: code_index
     ; (* code pointer  *)
       mutable hp: heap_index
     ; (* next free     *)
       mutable status: Status.t }
   [@@deriving sexp_of]
+
+  let error t msg =
+    t.status <- Halted ;
+    Errors.complain msg
 
   let set_register t (reg: Register.t) (value: Register_item.t) =
     {t with register_file= Map.set t.register_file ~key:reg ~data:value}
@@ -96,22 +101,22 @@ module Vm_state = struct
     match get_register t Frame_pointer with
     | Frame_pointer fp -> fp
     | _ ->
-        Errors.complain
+        error t
           "Frame pointer register contains a value that is not a frame pointer."
 
   let _get_ra t =
     match get_register t Return_address with
     | Return_address ra -> ra
     | _ ->
-        Errors.complain
+        error t
           "Return address register contains a value that is not a return \
            address."
 
-  let get_instruction t = (t.code).(t.cp)
+  let get_instruction t = (t.code).(t.pc)
 
   let to_string t =
     let instr = get_instruction t in
-    let cp = sprintf !"cp = %d -> %{Instruction}" t.cp instr in
+    let pc = sprintf !"pc = %d -> %{Instruction}" t.pc instr in
     let hp = sprintf !"hp = %d" t.hp in
     let stack = sprintf "Stack =\n%s" (string_of_stack t.stack t.sp) in
     let heap =
@@ -119,7 +124,7 @@ module Vm_state = struct
       else sprintf "Heap =\n%s" (string_of_heap t.heap t.hp)
     in
     let registers = string_of_register_file t.register_file in
-    String.concat ~sep:"\n" [cp; hp; stack; heap; registers]
+    String.concat ~sep:"\n" [pc; hp; stack; heap; registers]
 
   let stack_top t = (t.stack).(t.sp - 1)
 
@@ -143,21 +148,22 @@ module Vm_state = struct
     | Heap_index x -> string_of_heap_item t x
     | _ as r -> Register_item.to_string r
 
-  (* cp := cp + 1  *)
-  let advance_cp t =
-    if t.cp < t.code_bound then {t with cp= t.cp + 1}
+  (* pc := pc + 1  *)
+  let advance_pc t =
+    if t.pc < t.code_bound then {t with pc= t.pc + 1}
     else {t with status= CodeIndexOutOfBound}
 
-  let goto t i = {t with cp= i}
+  let goto t i = {t with pc= i}
 
   (* this just discards values off the top of the heap. *)
-  let pop t n =
-    if 0 <= t.sp - n then {t with sp= t.sp - n}
-    else {t with status= StackUnderflow}
+  (* let pop t n =
+   *   if 0 <= t.sp - n then {t with sp= t.sp - n}
+   *   else {t with status= StackUnderflow} *)
 
-  let _pop_top t reg =
+  let pop_top t reg =
     let c = stack_top t in
-    set_register t reg c
+    let t = set_register t reg c in
+    {t with sp= t.sp - 1}
 
   (* pop value of reg onto stack  *)
   let push t reg =
@@ -198,10 +204,10 @@ module Vm_state = struct
     if hp + n < t.heap_bound then (hp, {t with hp= hp + n})
     else
       match invoke_garbage_collection t with
-      | None -> Errors.complain "allocate : heap exhausted"
+      | None -> error t "allocate : heap exhausted"
       | Some t' ->
           if t'.hp + n < t'.heap_bound then (t'.hp, {t' with hp= t'.hp + n})
-          else Errors.complain "allocate : heap exhausted"
+          else error t "allocate : heap exhausted"
 
   (* reg1 := (reg2, reg3) *)
   let mk_pair t reg1 reg2 reg3 =
@@ -222,8 +228,8 @@ module Vm_state = struct
       match (t.heap).(a) with
       | Header (_, Pair) ->
           set_register t reg1 (heap_to_register_item (t.heap).(a + 1))
-      | _ -> Errors.complain "do_fst : unexpected heap item" )
-    | _ -> Errors.complain "do_fst : expecting heap pointer on stack"
+      | _ -> error t "do_fst : unexpected heap item" )
+    | _ -> error t "do_fst : expecting heap pointer as an argument"
 
   (* reg1 := snd reg2 *)
   let do_snd t reg1 reg2 =
@@ -232,8 +238,8 @@ module Vm_state = struct
       match (t.heap).(a) with
       | Header (_, Pair) ->
           set_register t reg1 (heap_to_register_item (t.heap).(a + 2))
-      | _ -> Errors.complain "do_snd : unexpected heap item" )
-    | _ -> Errors.complain "do_snd : expecting heap pointer on stack"
+      | _ -> error t "do_snd : unexpected heap item" )
+    | _ -> error t "do_snd : expecting heap pointer on stack"
 
   (* reg1 := mk_inl reg2 *)
   let mk_inl t reg1 reg2 =
@@ -255,7 +261,7 @@ module Vm_state = struct
 
   (* match reg2 with
    * | Inr x -> (goto i)
-   * | Inl x -> (advance_cp) *)
+   * | Inl x -> (advance_pc) *)
   let case t reg1 reg2 i =
     let c = get_register t reg2 in
     match c with
@@ -263,13 +269,9 @@ module Vm_state = struct
         let t = set_register t reg1 (heap_to_register_item (t.heap).(a + 1)) in
         match (t.heap).(a) with
         | Header (_, Inr) -> goto t i
-        | Header (_, Inl) -> advance_cp t
-        | _ ->
-            Errors.complain
-              "case: runtime error, expecting union header in heap" )
-    | _ ->
-        Errors.complain
-          "case: runtime error, expecting heap index on top of stack"
+        | Header (_, Inl) -> advance_pc t
+        | _ -> error t "case: runtime error, expecting union header in heap" )
+    | _ -> error t "case: runtime error, expecting heap index on top of stack"
 
   (* reg1 := ref reg2 *)
   let mk_ref t reg1 reg2 =
@@ -283,7 +285,7 @@ module Vm_state = struct
     let v = get_register t reg2 in
     match v with
     | Heap_index a -> set_register t reg1 (heap_to_register_item (t.heap).(a))
-    | _ -> Errors.complain "deref"
+    | _ -> error t "deref"
 
   (* *reg1 := reg2 *)
   let assign t reg1 reg2 =
@@ -295,32 +297,21 @@ module Vm_state = struct
           (t.heap).(a) <- register_to_heap_item c2 ;
           t )
         else {t with status= HeapIndexOutOfBound}
-    | _ ->
-        Errors.complain "assign: runtime error, expecting heap index on stack"
+    | _ -> error t "assign: runtime error, expecting heap index on stack"
 
   (* if reg then pc += 1 else pc := i *)
   let test t i reg =
     match get_register t reg with
-    | Register_item.Bool true -> advance_cp t
-    | _ -> {t with cp= i}
-
-  (* return reg*)
-  let return t reg =
-    let fp = get_fp t in
-    match ((t.stack).(fp), (t.stack).(fp + 1)) with
-    | Frame_pointer saved_fp, Return_address k ->
-        let return_value = get_register t reg in
-        let t = set_register t Return_value return_value in
-        let t = set_register t Frame_pointer (Frame_pointer saved_fp) in
-        {t with cp= k; sp= fp - 2}
-    | _ -> Errors.complain "return : malformed stack frame"
+    | Register_item.Bool true -> advance_pc t
+    | _ -> {t with pc= i}
 
   let fetch t fp = function
+    | REGISTER_LOCATION reg -> get_register t reg
     | STACK_LOCATION offset -> (t.stack).(fp + offset)
     | HEAP_LOCATION offset ->
-      match (t.stack).(fp - 1) with
+      match get_register t Closure_pointer with
       | Heap_index a -> heap_to_register_item (t.heap).(a + offset + 1)
-      | _ -> Errors.complain "search : expecting closure pointer"
+      | _ -> error t "search : expecting closure pointer"
 
   (* reg := lookup(fp, vlp) *)
   let lookup t fp vlp reg = set_register t reg (fetch t fp vlp)
@@ -341,10 +332,9 @@ module Vm_state = struct
             aux (m + 1) )
         in
         aux 0 ;
-        let t = pop t n in
+        (* let t = pop t n in *)
         set_register t reg (Heap_index a)
-    | _, None ->
-        Errors.complain "mk_closure : internal error, no address in closure!"
+    | _, None -> error t "mk_closure : internal error, no address in closure!"
 
   (* run a closure *)
   let apply t reg =
@@ -354,19 +344,33 @@ module Vm_state = struct
       | Code_pointer i ->
           (* save the frame pointer *)
           let t = push t Frame_pointer in
-          (* save the return address *)
           let t = push t Return_address in
+          let t = push t Closure_pointer in
+          (* these should be popped in the opposite order in the return function.*)
+          (* debugging for fib*)
+          ( match get_register t Function_argument with
+          | Int x when x < 0 -> failwith "invalid value for x"
+          | _ -> () ) ;
           let new_fp = t.sp in
-          let new_ra = t.cp + 1 in
+          let new_ra = t.pc + 1 in
           let t = set_register t Frame_pointer (Frame_pointer new_fp) in
           let t = set_register t Return_address (Return_address new_ra) in
-          {t with cp= i}
-      | _ ->
-          Errors.complain "apply: runtime error, expecting code index in heap"
-      )
-    | _ ->
-        Errors.complain
-          "apply: runtime error, expecting heap index on top of stack"
+          let t = set_register t Closure_pointer (Heap_index a) in
+          {t with pc= i}
+      | _ -> error t "apply: runtime error, expecting code index in heap" )
+    | _ -> error t "apply: runtime error, expecting heap index at *reg"
+
+  (* return *)
+  let return t =
+    let ra =
+      match get_register t Return_address with
+      | Return_address r -> r
+      | _ -> error t "return: invalid ra register."
+    in
+    let t = pop_top t Closure_pointer in
+    let t = pop_top t Return_address in
+    let t = pop_top t Frame_pointer in
+    {t with pc= ra}
 
   let mov_register t dest src =
     let value = get_register t src in
@@ -374,31 +378,32 @@ module Vm_state = struct
 
   let step t =
     match get_instruction t with
-    | Set (dest, value) -> advance_cp (set_register t dest value)
-    | Mov (dest, src) -> advance_cp (mov_register t dest src)
-    | Unary (op, dest, reg) -> advance_cp (perform_unary t op dest reg)
+    | Set (dest, value) -> advance_pc (set_register t dest value)
+    | Mov (dest, src) -> advance_pc (mov_register t dest src)
+    | Unary (op, dest, reg) -> advance_pc (perform_unary t op dest reg)
     (* TODO me390: we could unify Oper and Make_pair *)
     | Oper (op, dest, (op1, op2)) ->
-        advance_cp (perform_op t op dest op1 op2)
-    | Make_pair (dest, (op1, op2)) -> advance_cp (mk_pair t dest op1 op2)
-    | Fst (dest, op) -> advance_cp (do_fst t dest op)
-    | Snd (dest, op) -> advance_cp (do_snd t dest op)
-    | Make_inl (dest, op) -> advance_cp (mk_inl t dest op)
-    | Make_inr (dest, op) -> advance_cp (mk_inr t dest op)
-    | Push reg -> advance_cp (push t reg)
+        advance_pc (perform_op t op dest op1 op2)
+    | Make_pair (dest, (op1, op2)) -> advance_pc (mk_pair t dest op1 op2)
+    | Fst (dest, op) -> advance_pc (do_fst t dest op)
+    | Snd (dest, op) -> advance_pc (do_snd t dest op)
+    | Make_inl (dest, op) -> advance_pc (mk_inl t dest op)
+    | Make_inr (dest, op) -> advance_pc (mk_inr t dest op)
+    | Push reg -> advance_pc (push t reg)
+    | Pop reg -> advance_pc (pop_top t reg)
     | Apply reg -> apply t reg
-    | Lookup (reg, vp) -> advance_cp (lookup t (get_fp t) vp reg)
-    | Return reg -> return t reg
-    | Make_closure (reg, l, n) -> advance_cp (mk_closure t n reg l)
-    | Label _l -> advance_cp t
-    | Deref (dest, ptr) -> advance_cp (deref t dest ptr)
-    | Make_ref (dest, src) -> advance_cp (mk_ref t dest src)
-    | Assign (ptr, src) -> advance_cp (assign t ptr src)
+    | Lookup (reg, vp) -> advance_pc (lookup t (get_fp t) vp reg)
+    | Return -> return t
+    | Make_closure (reg, l, n) -> advance_pc (mk_closure t n reg l)
+    | Label _l -> advance_pc t
+    | Deref (dest, ptr) -> advance_pc (deref t dest ptr)
+    | Make_ref (dest, src) -> advance_pc (mk_ref t dest src)
+    | Assign (ptr, src) -> advance_pc (assign t ptr src)
     | Halt -> {t with status= Halted}
     | Goto (_, Some i) -> goto t i
     | Test (reg, (_, Some i)) -> test t i reg
     | Case (reg1, reg2, (_, Some i)) -> case t reg1 reg2 i
-    | _ -> Errors.complain ("step : bad state = " ^ to_string t ^ "\n")
+    | _ -> error t ("step : bad state = " ^ to_string t ^ "\n")
 
   let rec driver t ~(options: Options.t) ~n =
     if options.verbose_vm then
@@ -435,10 +440,13 @@ module Vm_state = struct
   let first_frame t =
     let saved_fp = Register_item.Frame_pointer 0 in
     let return_index = Register_item.Return_address 0 in
+    let default_closure = Register_item.Heap_index 0 in
     let t = set_register t Frame_pointer saved_fp in
     let t = set_register t Return_address return_index in
+    let t = set_register t Closure_pointer default_closure in
     let t = push t Frame_pointer in
-    push t Return_address
+    let t = push t Return_address in
+    push t Closure_pointer
 
   let create (options: Options.t) code =
     let code_array, c_bound = load code in
@@ -457,7 +465,7 @@ module Vm_state = struct
     ; register_file= Register.Map.empty
     ; code= code_array
     ; sp= 0
-    ; cp= 0
+    ; pc= 0
     ; hp= 0
     ; status= Running }
 end

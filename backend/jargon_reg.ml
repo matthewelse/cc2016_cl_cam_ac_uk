@@ -104,61 +104,112 @@ let rec comp vmap return_reg =
         let defs1, c1 = comp vmap ignored_result e in
         let defs2, c2 = comp vmap return_reg (Seq rest) in
         (defs1 @ defs2, c1 @ c2)
-    | Case _ -> failwith "Cases require implementation of lambdas."
-    | _ -> Errors.complain "Unable to compile expression."
+    | Ref e ->
+        let value = Register.fresh () in
+        let defs, c = comp vmap value e in
+        (defs, c @ [Make_ref (return_reg, value)])
+    | Deref e ->
+        let value = Register.fresh () in
+        let defs, c = comp vmap value e in
+        (defs, c @ [Deref (return_reg, value)])
+    | While (e1, e2) ->
+        let condition = Register.fresh () in
+        let test_label = new_label () in
+        let end_label = new_label () in
+        let defs1, c1 = comp vmap condition e1 in
+        let defs2, c2 = comp vmap return_reg e2 in
+        ( defs1 @ defs2
+        , [Label test_label] @ c1
+          @ [Test (condition, (end_label, None))]
+          @ c2
+          @ [ Goto (test_label, None)
+            ; Label end_label
+            ; Set (return_reg, Register_item.Unit) ] )
+    | Assign (e1, e2) ->
+        (* *e1 = e2 *)
+        let r1 = Register.fresh () in
+        let r2 = Register.fresh () in
+        let defs1, c1 = comp vmap r1 e1 in
+        let defs2, c2 = comp vmap r2 e2 in
+        (* returns unit *)
+        ( defs1 @ defs2
+        , c1 @ c2 @ [Assign (r1, r2); Set (return_reg, Register_item.Unit)] )
+    | Lambda (x, e) -> comp_lambda vmap return_reg (None, x, e)
+    | Var x ->
+        ([], [Lookup (return_reg, List.Assoc.find_exn vmap ~equal:( = ) x)])
+    | LetFun (f, (x, lambda), expr) ->
+        comp vmap return_reg (App (Lambda (f, expr), Lambda (x, lambda)))
+    | LetRecFun (f, (x, lambda), expr) ->
+        (* let x = lambda in expr *)
+        let let_lambda = Register.fresh () in
+        let inner_lambda = Register.fresh () in
+        let defs1, c1 = comp vmap let_lambda (Lambda (f, expr)) in
+        let defs2, c2 = comp_lambda vmap inner_lambda (Some f, x, lambda) in
+        (* construct the argument to the inner body of the let (i.e. the function),
+           then construct the closure for the body, then call the body with the function
+           as an argument. Can we prove that c1 will never write to the
+           Function_argument register, to avoid the move instruction? *)
+        ( defs1 @ defs2
+        , c2 @ c1
+          @ [ Push Function_argument
+            ; Mov (Function_argument, inner_lambda)
+            ; Apply let_lambda
+            ; Pop Function_argument ] )
+    | App (e1, e2) ->
 
-(*
-  | Ref e ->
-      let defs, c = comp vmap e in
-      (defs, c @ [Make_ref])
-  | Deref e ->
-      let defs, c = comp vmap e in
-      (defs, c @ [Deref])
-  | While (e1, e2) ->
-      let test_label = new_label () in
-      let end_label = new_label () in
-      let defs1, c1 = comp vmap e1 in
-      let defs2, c2 = comp vmap e2 in
-      ( defs1 @ defs2
-      , [Label test_label] @ c1
-        @ [Test (end_label, None)]
-        @ c2
-        @ [Pop; Goto (test_label, None); Label end_label; Push Register_item.Unit] )
-  | Assign (e1, e2) ->
-      let defs1, c1 = comp vmap e1 in
-      let defs2, c2 = comp vmap e2 in
-      (defs1 @ defs2, c1 @ c2 @ [Assign])
-  | App (e1, e2) ->
-      let defs1, c1 = comp vmap e1 in
-      let defs2, c2 = comp vmap e2 in
-      (defs1 @ defs2, c2 @ c1 @ [Apply])
-  | Var x -> ([], [Lookup (List.Assoc.find_exn vmap ~equal:(=) x)])
-  | LetFun (f, (x, e1), e2) -> comp vmap (App (Lambda (f, e2), Lambda (x, e1)))
-  | Lambda (x, e) -> comp_lambda vmap (None, x, e)
-  | LetRecFun (f, (x, e1), e2) ->
-      let defs1, c1 = comp vmap (Lambda (f, e2)) in
-      let defs2, c2 = comp_lambda vmap (Some f, x, e1) in
-      (defs1 @ defs2, c2 @ c1 @ [Apply])*)
-(*
- and comp_lambda vmap (f_opt, x, e) =
-  let open Common.Jargon in
-  let open Common.Jargon.Instruction in
-  let bound_vars = match f_opt with None -> [x] | Some f -> [x; f] in
+        let push_all_registers =
+          List.range 0 !reg_index
+          |> List.map ~f:(fun x -> Push (Temporary x))
+        in
+        let pop_all_registers =
+          List.rev push_all_registers
+        |> List.map ~f:(function Push x -> Pop x | y -> y) in
+        let r1 = Register.fresh () in
+        let r2 = Register.fresh () in
+        let defs1, c1 = comp vmap r1 e1 in
+        let defs2, c2 = comp vmap r2 e2 in
+        (* compute the argument before the function consuming it *)
+        ( defs1 @ defs2
+        , c2 @ c1 @
+        push_all_registers
+          @ [ Push Function_argument
+            ; Mov (Function_argument, r2)
+            ; Apply r1
+            ; Pop Function_argument ] @ pop_all_registers
+            @ [Mov (return_reg, Return_value)])
+    | Case _ -> failwith "unable to do cases"
+
+and comp_lambda vmap dest (f_opt, x, e) =
+  let open Common.Jargon_reg in
+  let open Common.Jargon_reg.Instruction in
+  (* the bound variables are either just {x} or {x, f} if f is recursive. *)
+  let bound_vars = x :: Option.to_list f_opt in
+  (* when computing a lambda, we need to first collect together all of the free
+     variables into a closure: *)
+  let free_vars = Free_vars.free_vars bound_vars e in
+  (* either f is recursive (and has an existing label), or we should create one. *)
+  (* where do we find the bound value of f? f is assigned to a register when we make
+     closure, so make the caller decide this in advance. *)
   let f = match f_opt with None -> new_label () | Some f -> f in
   let f_bind =
-    match f_opt with None -> [] | Some f -> [(f, STACK_LOCATION (-1))]
+    match f_opt with Some f -> [(f, REGISTER_LOCATION dest)] | None -> []
   in
-  let x_bind = (x, STACK_LOCATION (-2)) in
-  let fvars = Free_vars.free_vars bound_vars e in
-  let fvar_bind p y = (y, HEAP_LOCATION (p + 1)) in
-  let env_bind = List.mapi fvars ~f:fvar_bind in
-  let fetch_fvars = List.map fvars ~f:(fun y -> Lookup (List.Assoc.find_exn vmap  ~equal:(=) y)) in
+  let x_bind = (x, REGISTER_LOCATION Register.Function_argument) in
+  (* free variables exist in the closure *)
+  (* make sure this is deterministic! *)
+  let fv_bind p y = (y, HEAP_LOCATION (p + 1)) in
+  let env_bind = List.mapi free_vars ~f:fv_bind in
+  let fetch_fvars =
+    List.map free_vars ~f:(fun y ->
+        Lookup (Register.fresh (), List.Assoc.find_exn vmap ~equal:( = ) y) )
+  in
   let new_vmap = x_bind :: (f_bind @ env_bind @ vmap) in
-  let defs, c = comp new_vmap e in
+  let defs, c = comp new_vmap Return_value e in
   let def = [Label f] @ c @ [Return] in
+  (* fetch fvars and put them into a closure, put the resulting pointer in dest *)
   ( def @ defs
-  , List.rev fetch_fvars @ [Make_closure ((f, None), List.length fvars)] )
- *)
+  , List.rev fetch_fvars
+    @ [Make_closure (dest, (f, None), List.length free_vars)] )
 
 let compile (options: Options.t) e =
   let open Common.Jargon_reg.Instruction in
